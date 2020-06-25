@@ -120,4 +120,32 @@ class AddressWebClientTest {
   }
 
 
+  @Test
+  public void deleteAddressShouldDeleteRequestedAddress() throws JsonProcessingException {
+
+    final String addressId = "address-1";
+
+    mockWebTestClient
+        .prepareMockResponseWith(HttpStatus.NO_CONTENT)
+        .call(() -> addressWebClient.deleteAddress(addressId))
+        .expectNoContent()
+        .takeRequest()
+        .expectMethod(HttpMethod.DELETE.name())
+        .expectPath(ADDRESS_PATH.replace("{addressId}", addressId));
+  }
+
+  @Test
+  public void deleteAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
+    mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
+        .call(() -> addressWebClient.deleteAddress("address-2"))
+        .expectClientError();
+  }
+
+  @Test
+  public void deleteAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
+    mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
+        .call(() -> addressWebClient.deleteAddress("address-3"))
+        .expectServerError();
+  }
+
 }

@@ -42,28 +42,6 @@ public class AddressWebClient {
         .bodyToMono(Address.class);
   }
 
-  public Mono<Address> updateAddress(Address address) {
-
-    return webClient.put()
-        .uri(addressProperties.getPathAddress(), address.getId())
-        .accept(MediaType.APPLICATION_JSON)
-        .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(address)
-        .retrieve()
-        .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
-        .bodyToMono(Address.class);
-  }
-
-  public Mono<Address> patchAddress(Address address) {
-    return webClient.patch()
-        .uri(addressProperties.getPathAddress(), address.getId())
-        .accept(MediaType.APPLICATION_JSON)
-        .bodyValue(address)
-        .retrieve()
-        .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
-        .bodyToMono(Address.class);
-  }
-
   public Mono<Void> deleteAddress(String addressId) {
     return webClient.delete()
         .uri(addressProperties.getPathAddress(), addressId)
