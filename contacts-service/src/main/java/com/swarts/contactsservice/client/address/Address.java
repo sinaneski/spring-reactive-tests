@@ -15,6 +15,9 @@ public class Address {
   @JsonProperty("address_id")
   private String id;
 
+  @JsonProperty("customer_id")
+  private String customerId;
+
   @JsonProperty("street_lines")
   private Street street;
 

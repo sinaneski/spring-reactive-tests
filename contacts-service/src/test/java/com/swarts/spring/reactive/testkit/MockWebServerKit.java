@@ -126,6 +126,13 @@ public class MockWebServerKit {
     return this;
   }
 
+  public <T> MockWebServerKit expectResponseList(T[] responseArray) {
+    StepVerifier.create((Publisher<T>) actualClientResponse)
+        .expectNext(responseArray)
+        .verifyComplete();
+    return this;
+  }
+
   public <T> MockWebServerKit expectNoContent() {
     StepVerifier.create((Publisher<T>) actualClientResponse)
         .verifyComplete();

@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor
 public class User {
@@ -21,7 +21,6 @@ public class User {
   @JsonProperty("last_name")
   private String lastName;
 
-  @JsonProperty("address_id")
-  private String addressId;
-
+  @JsonProperty("email")
+  private String email;
 }

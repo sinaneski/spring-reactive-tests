@@ -18,4 +18,5 @@ public class UserProperties {
 
   private String url;
   private String pathUser;
+  private String pathUsers;
 }

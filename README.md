@@ -9,22 +9,23 @@ We'll implement an `contacts-service` that get customer contact information from
 - GET `/customers/{customerId}/address/{addressId}`
 - DELETE `/customers/{customerId}/address/{addressId}`
 
-`contacts-service` first gets customer information and `addressId` from `user-service`, 
-then it gets address information from `address-service` using the `addressId`.
+`contacts-service` gets customer information `user-service`, and address information from `address-service`.
 
 `user-service` endpoints:
+- POST `/users`
 - GET `/users/{userId}`
 
 `address-service` endpoints:
-- POST `/address`
-- GET `/address/{addressId}`
-- DELETE `/address/{addressId}`
+- POST `/address/{customerId}`
+- GET `/address/{customerId}`
+- GET `/address/{customerId}/{addressId}`
+- DELETE `/address/{customerId}/{addressId}`
 
 # Testing WebClient
 
 We implemented `MockWebServerKit` class to test spring `WebClient` in an easy way.
 
-This claas uses `MockWebServer` from `okhttp3` project in order to mock the other apis server responses.
+This class uses `MockWebServer` from `okhttp3` project in order to mock the other apis server responses.
 
 ## How `MockWebServerKit` works
 
@@ -94,8 +95,6 @@ correct path, header, body fields and get expected response.
             .expectMethod(HttpMethod.DELETE.name())
             .expectPath(ADDRESS_PATH.replace("{addressId}", addressId))
     ```
-
-
   
 - Example: testing client error when endpoint return 4xx error
 

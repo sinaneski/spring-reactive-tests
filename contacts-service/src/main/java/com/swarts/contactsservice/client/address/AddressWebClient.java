@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -20,10 +21,18 @@ public class AddressWebClient {
     this.addressProperties = addressProperties;
   }
 
-  public Mono<Address> getAddress(String addressId) {
-
+  public Flux<Address> getAddresses(String customerId) {
     return webClient.get()
-        .uri(addressProperties.getPathAddress(), addressId)
+        .uri(addressProperties.getPathAddresses(), customerId)
+        .accept(MediaType.APPLICATION_JSON)
+        .retrieve()
+        .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
+        .bodyToFlux(Address.class);
+  }
+
+  public Mono<Address> getAddress(String customerId, String addressId) {
+    return webClient.get()
+        .uri(addressProperties.getPathAddress(), customerId, addressId)
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
@@ -31,9 +40,8 @@ public class AddressWebClient {
   }
 
   public Mono<Address> createAddress(Address address) {
-
     return webClient.post()
-        .uri(addressProperties.getPathAddresses())
+        .uri(addressProperties.getPathAddresses(), address.getCustomerId())
         .accept(MediaType.APPLICATION_JSON)
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(address)
@@ -42,9 +50,9 @@ public class AddressWebClient {
         .bodyToMono(Address.class);
   }
 
-  public Mono<Void> deleteAddress(String addressId) {
+  public Mono<Void> deleteAddress(String customerId, String addressId) {
     return webClient.delete()
-        .uri(addressProperties.getPathAddress(), addressId)
+        .uri(addressProperties.getPathAddress(), customerId, addressId)
         .accept(MediaType.APPLICATION_JSON)
         .retrieve()
         .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))

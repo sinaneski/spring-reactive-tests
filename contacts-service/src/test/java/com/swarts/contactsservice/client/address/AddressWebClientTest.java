@@ -3,7 +3,9 @@ package com.swarts.contactsservice.client.address;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.swarts.spring.reactive.testkit.MockWebServerKit;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,13 +18,14 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 class AddressWebClientTest {
 
-  private static final String ADDRESSES_PATH = "/address";
-  private static final String ADDRESS_PATH = "/address/{addressId}";
+  private static final String ADDRESSES_PATH = "/address/{customerId}";
+  private static final String ADDRESS_PATH = "/address/{customerId}/{addressId}";
+
   private AddressWebClient addressWebClient;
   private MockWebServerKit mockWebTestClient;
 
   @BeforeEach
-  public void setup() {
+  void setup() {
     mockWebTestClient = MockWebServerKit.create();
     AddressProperties addressProperties = AddressProperties.builder()
         .url(mockWebTestClient.getMockServerUrl())
@@ -33,26 +36,67 @@ class AddressWebClientTest {
   }
 
   @AfterEach
-  public void tearDown() throws IOException {
+  void tearDown() throws IOException {
     mockWebTestClient.dispose();
   }
 
   @Test
-  public void getAddressShouldRequestCorrectPathAndRetrieveAddress() {
+  void getAddressesShouldRequestCorrectPathAndRetrieveAllAddress() {
     final Map<String, String> headers = Collections
         .singletonMap(HttpHeaders.CONTENT_TYPE, MediaTypes.APPLICATION_JSON);
 
+    final String customerId = "customer-1";
+
+    List<Address> addressList = Arrays.asList(
+        Address.builder().id("address-1").build(),
+        Address.builder().id("address-2").build()
+    );
+
+    final String expectedPath = ADDRESSES_PATH.replace("{customerId}", customerId);
+
+    mockWebTestClient
+        .prepareMockResponseWith(HttpStatus.OK, addressList, headers)
+        .call(() -> addressWebClient.getAddresses(customerId))
+        .expectResponseList(addressList.toArray())
+        .takeRequest()
+        .expectHeader(HttpHeaders.ACCEPT, MediaTypes.APPLICATION_JSON)
+        .expectMethod(HttpMethod.GET.name())
+        .expectPath(expectedPath);
+  }
+
+  @Test
+  void getAddressesShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
+    mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
+        .call(() -> addressWebClient.getAddresses("customer-1"))
+        .expectClientError();
+  }
+
+  @Test
+  void getAddressesShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
+    mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
+        .call(() -> addressWebClient.getAddresses("customer-1"))
+        .expectServerError();
+  }
+
+  @Test
+  void getAddressShouldRequestCorrectPathAndRetrieveAddress() {
+    final Map<String, String> headers = Collections
+        .singletonMap(HttpHeaders.CONTENT_TYPE, MediaTypes.APPLICATION_JSON);
+
+    final String customerId = "customer-1";
     final String addressId = "address-1";
 
     Address addressResponse = Address.builder()
         .id(addressId)
         .build();
 
-    final String expectedPath = ADDRESS_PATH.replace("{addressId}", addressId);
+    final String expectedPath = ADDRESS_PATH
+        .replace("{customerId}", customerId)
+        .replace("{addressId}", addressId);
 
     mockWebTestClient
         .prepareMockResponseWith(HttpStatus.OK, addressResponse, headers)
-        .call(() -> addressWebClient.getAddress(addressId))
+        .call(() -> addressWebClient.getAddress(customerId, addressId))
         .expectResponse(addressResponse)
         .takeRequest()
         .expectHeader(HttpHeaders.ACCEPT, MediaTypes.APPLICATION_JSON)
@@ -61,25 +105,26 @@ class AddressWebClientTest {
   }
 
   @Test
-  public void getAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
+  void getAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
-        .call(() -> addressWebClient.getAddress("address-2"))
+        .call(() -> addressWebClient.getAddress("customer-1", "address-2"))
         .expectClientError();
   }
 
   @Test
-  public void getAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
+  void getAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
-        .call(() -> addressWebClient.getAddress("address-3"))
+        .call(() -> addressWebClient.getAddress("customer-1", "address-3"))
         .expectServerError();
   }
 
   @Test
-  public void createAddressShouldCreateRequestedAddress() throws JsonProcessingException {
+  void createAddressShouldCreateRequestedAddress() throws JsonProcessingException {
     final Map<String, String> headers = Collections
         .singletonMap(HttpHeaders.CONTENT_TYPE, MediaTypes.APPLICATION_JSON);
 
     Address addressRequest = Address.builder()
+        .customerId("customer-1")
         .street(Street.builder()
             .line1("line1")
             .line2("line2")
@@ -101,19 +146,19 @@ class AddressWebClientTest {
         .expectHeader(HttpHeaders.ACCEPT, MediaTypes.APPLICATION_JSON)
         .expectHeader(HttpHeaders.CONTENT_TYPE, MediaTypes.APPLICATION_JSON)
         .expectMethod(HttpMethod.POST.name())
-        .expectPath(ADDRESSES_PATH)
+        .expectPath(ADDRESSES_PATH.replace("{customerId}", "customer-1"))
         .expectBody(addressRequest, Address.class);
   }
 
   @Test
-  public void createAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
+  void createAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
         .call(() -> addressWebClient.createAddress(Address.builder().build()))
         .expectClientError();
   }
 
   @Test
-  public void createAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
+  void createAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
         .call(() -> addressWebClient.createAddress(Address.builder().build()))
         .expectServerError();
@@ -121,30 +166,35 @@ class AddressWebClientTest {
 
 
   @Test
-  public void deleteAddressShouldDeleteRequestedAddress() throws JsonProcessingException {
+  void deleteAddressShouldDeleteRequestedAddress() {
 
+    final String customerId = "customer-1";
     final String addressId = "address-1";
+
+    final String expectedPath = ADDRESS_PATH
+        .replace("{customerId}", customerId)
+        .replace("{addressId}", addressId);
 
     mockWebTestClient
         .prepareMockResponseWith(HttpStatus.NO_CONTENT)
-        .call(() -> addressWebClient.deleteAddress(addressId))
+        .call(() -> addressWebClient.deleteAddress(customerId, addressId))
         .expectNoContent()
         .takeRequest()
         .expectMethod(HttpMethod.DELETE.name())
-        .expectPath(ADDRESS_PATH.replace("{addressId}", addressId));
+        .expectPath(expectedPath);
   }
 
   @Test
-  public void deleteAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
+  void deleteAddressShouldReturnsClientErrorWhenServerRespondsWith4xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
-        .call(() -> addressWebClient.deleteAddress("address-2"))
+        .call(() -> addressWebClient.deleteAddress("customer-1", "address-2"))
         .expectClientError();
   }
 
   @Test
-  public void deleteAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
+  void deleteAddressShouldReturnsServerErrorWhenServerRespondsWith5xxError() {
     mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
-        .call(() -> addressWebClient.deleteAddress("address-3"))
+        .call(() -> addressWebClient.deleteAddress("customer-1", "address-3"))
         .expectServerError();
   }
 

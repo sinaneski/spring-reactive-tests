@@ -21,7 +21,6 @@ public class UserWebClient {
   }
 
   public Mono<User> getUser(String userId) {
-
     return webClient.get()
         .uri(userProperties.getPathUser(), userId)
         .accept(MediaType.APPLICATION_JSON)
@@ -29,4 +28,14 @@ public class UserWebClient {
         .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
         .bodyToMono(User.class);
   }
+
+  public Mono<User> addUser(User user) {
+    return webClient.post()
+        .uri(userProperties.getPathUsers())
+        .accept(MediaType.APPLICATION_JSON)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(user)
+        .retrieve()
+        .onStatus(HttpStatus::isError, response -> Mono.just(ClientException.from(response)))
+        .bodyToMono(User.class);  }
 }
