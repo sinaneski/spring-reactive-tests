@@ -9,7 +9,7 @@ public class ClientException extends RuntimeException {
 
   private final HttpStatus status;
 
-  private ClientException(HttpStatus status, String message) {
+  public ClientException(HttpStatus status, String message) {
     super(message);
     this.status = status;
   }
@@ -27,4 +27,13 @@ public class ClientException extends RuntimeException {
     return status.is5xxServerError();
   }
 
+  public static boolean isClientError(Throwable throwable) {
+    return throwable instanceof ClientException
+        && ((ClientException) throwable).isClientError();
+  }
+
+  public static boolean isServerError(Throwable throwable) {
+    return throwable instanceof ClientException
+        && ((ClientException) throwable).isServerError();
+  }
 }
