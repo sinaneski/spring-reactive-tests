@@ -3,16 +3,17 @@ package com.swarts.customerservice.controller;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.swarts.customerservice.data.DataProvider;
 import com.swarts.customerservice.model.Customer;
 import com.swarts.customerservice.model.CustomerAddress;
 import com.swarts.customerservice.service.CustomerService;
-import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @ExtendWith(SpringExtension.class)
@@ -26,23 +27,20 @@ class CustomerControllerTest {
   private WebTestClient webTestClient;
 
   private CustomerService customerService;
-  private CustomerController customerController;
 
   @BeforeEach
   void setUp() {
     customerService = mock(CustomerService.class);
-    customerController = new CustomerController(customerService);
 
     webTestClient = WebTestClient
-        .bindToController(customerController)
+        .bindToController(new CustomerController(customerService))
         .build();
-
   }
 
   @Test
   void shouldAddCustomer() {
-    Customer customerRequest = customerRequest();
-    Customer customerResponse = customerResponse();
+    Customer customerRequest = DataProvider.customerRequest();
+    Customer customerResponse = DataProvider.customerResponse();
 
     when(customerService.addCustomer(customerRequest)).thenReturn(Mono.just(customerResponse));
 
@@ -55,13 +53,13 @@ class CustomerControllerTest {
         .expectStatus()
         .isCreated()
         .expectBody()
-        .jsonPath("$.id", customerResponse.getId());
+        .jsonPath("$.id").isEqualTo(customerResponse.getId());
   }
 
   @Test
   void shouldGetCustomer() {
     String customerId = "customer-1";
-    Customer customer = customerResponse();
+    Customer customer = DataProvider.customerResponse();
 
     when(customerService.getCustomer(customerId)).thenReturn(Mono.just(customer));
 
@@ -72,14 +70,14 @@ class CustomerControllerTest {
         .expectStatus()
         .isOk()
         .expectBody()
-        .jsonPath("$.id", customerId);
+        .jsonPath("$.id").isEqualTo(customerId);
   }
 
   @Test
   void shouldAddAddress() {
     String customerId = "customer-1";
-    CustomerAddress customerAddressRequest = customerAddressRequest();
-    CustomerAddress customerAddressResponse = customerAddressRequest();
+    CustomerAddress customerAddressRequest = DataProvider.customerAddressRequest();
+    CustomerAddress customerAddressResponse = DataProvider.customerAddressResponse();
 
     when(customerService.addAddress(customerAddressRequest)).thenReturn(Mono.just(customerAddressResponse));
 
@@ -92,11 +90,48 @@ class CustomerControllerTest {
         .expectStatus()
         .isOk()
         .expectBody()
-        .jsonPath("$.customerId", customerId);
+        .jsonPath("$.id").isEqualTo(customerAddressResponse.getId())
+        .jsonPath("$.customerId").isEqualTo(customerId);
   }
 
   @Test
-  void shouldDelete() {
+  void shouldGetAddressList() {
+    String customerId = "customer-1";
+    Customer customer = DataProvider.customerResponse();
+
+    when(customerService.getCustomerAddressList(customerId))
+        .thenReturn(Flux.fromIterable(customer.getAddressList()));
+
+    webTestClient.get()
+        .uri(ADDRESSES_PATH, customerId)
+        .accept(MediaType.APPLICATION_JSON)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.[0].customerId").isEqualTo(customerId);
+  }
+
+  @Test
+  void shouldGetAddress() {
+    String customerId = "customer-1";
+    String addressId = "address-1";
+
+    when(customerService.getCustomerAddress(customerId, addressId))
+        .thenReturn(Mono.just(DataProvider.customerAddressResponse()));
+
+    webTestClient.get()
+        .uri(ADDRESS_PATH, customerId, addressId)
+        .accept(MediaType.APPLICATION_JSON)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.id").isEqualTo(addressId);
+  }
+
+  @Test
+  void shouldDeleteAddress() {
     String customerId = "customer-1";
     String addressId = "address-1";
 
@@ -109,37 +144,4 @@ class CustomerControllerTest {
         .isNoContent();
   }
 
-  private Customer customerRequest() {
-    return Customer.builder()
-        .firstName("Maria")
-        .lastName("Doe")
-        .email("maria.doe@example.com")
-        .addressList(Collections.singletonList(customerAddressRequest()))
-        .build();
-  }
-
-  private CustomerAddress customerAddressRequest() {
-    return CustomerAddress.builder()
-        .customerId("customer-1")
-        .city("London")
-        .country("UK")
-        .line1("line1")
-        .line2("line2")
-        .line3("line3")
-        .postCode("PC1 2NB")
-        .build();
-  }
-
-  private Customer customerResponse() {
-    return customerRequest().toBuilder()
-        .id("customer-1")
-        .addressList(Collections.singletonList(customerAddressResponse()))
-        .build();
-  }
-
-  private CustomerAddress customerAddressResponse() {
-    return customerAddressRequest().toBuilder()
-        .id("address-1")
-        .build();
-  }
 }

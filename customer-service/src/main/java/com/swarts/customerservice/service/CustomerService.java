@@ -3,6 +3,7 @@ package com.swarts.customerservice.service;
 import com.swarts.customerservice.model.Customer;
 import com.swarts.customerservice.model.CustomerAddress;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -16,11 +17,19 @@ public class CustomerService {
     return null;
   }
 
-  public Mono<Void> deleteAddress(String customerId, String addressId) {
+  public Mono<CustomerAddress> addAddress(CustomerAddress addressRequest) {
     return null;
   }
 
-  public Mono<CustomerAddress> addAddress(CustomerAddress addressRequest) {
+  public Flux<CustomerAddress> getCustomerAddressList(String customerId) {
+    return null;
+  }
+
+  public Mono<CustomerAddress> getCustomerAddress(String customerId, String addressId) {
+    return null;
+  }
+
+  public Mono<Void> deleteAddress(String customerId, String addressId) {
     return null;
   }
 }

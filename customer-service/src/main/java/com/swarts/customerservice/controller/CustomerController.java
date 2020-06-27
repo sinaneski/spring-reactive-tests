@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -37,6 +38,20 @@ public class CustomerController {
       produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<Customer> getCustomer(@PathVariable String customerId) {
     return customerService.getCustomer(customerId);
+  }
+
+  @GetMapping(value = "/customers/{customerId}/address",
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Flux<CustomerAddress> getCustomerAddressList(@PathVariable String customerId) {
+    return customerService.getCustomerAddressList(customerId);
+  }
+
+  @GetMapping(value = "/customers/{customerId}/address/{addressId}",
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<CustomerAddress> getCustomerAddress(
+      @PathVariable String customerId,
+      @PathVariable String addressId) {
+    return customerService.getCustomerAddress(customerId, addressId);
   }
 
   @PostMapping(value = "/customers/{customerId}/address",
