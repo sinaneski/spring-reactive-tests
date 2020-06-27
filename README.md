@@ -2,14 +2,16 @@
 
 WebClient, Mutation and Integration tests in spring reactive web. 
 
-We'll implement an `contacts-service` that get customer contact information from other rest apis.
+We'll implement an `customer-service` that get customer contact information from other rest apis.
 
-`contacts-service` will have following endpoints:
+`customer-service` will have following endpoints:
+- POST `/customers/{customerId}`
 - POST `/customers/{customerId}/address`
+- GET `/customers/{customerId}/address`
 - GET `/customers/{customerId}/address/{addressId}`
 - DELETE `/customers/{customerId}/address/{addressId}`
 
-`contacts-service` gets customer information `user-service`, and address information from `address-service`.
+`customer-service` gets customer information `user-service`, and address information from `address-service`.
 
 `user-service` endpoints:
 - POST `/users`
