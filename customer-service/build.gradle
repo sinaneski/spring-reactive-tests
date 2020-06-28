@@ -2,7 +2,8 @@ plugins {
     id 'org.springframework.boot' version '2.3.1.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
     id 'java'
-    id 'io.freefair.lombok' version '4.1.6'
+    id 'io.freefair.lombok' version '5.1.0'
+    id 'info.solidsoft.pitest' version '1.5.1'
 }
 
 group = 'com.swarts'
@@ -40,6 +41,19 @@ dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
     }
+}
+
+pitest {
+    threads.set(4)
+    outputFormats.set(['XML', 'HTML'])
+    timestampedReports.set(false)
+    mutators.set(['CONDITIONALS_BOUNDARY', 'VOID_METHOD_CALLS', 'NEGATE_CONDITIONALS',
+                  'INVERT_NEGS', 'MATH', 'INCREMENTS',
+                  'TRUE_RETURNS', 'FALSE_RETURNS', 'PRIMITIVE_RETURNS', 'EMPTY_RETURNS', 'NULL_RETURNS']
+    )
+    timeoutConstInMillis.set(10000)
+    useClasspathFile.set(true)
+    junit5PluginVersion.set('0.12')
 }
 
 test {

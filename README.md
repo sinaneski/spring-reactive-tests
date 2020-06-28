@@ -210,6 +210,51 @@ correct path, header, body fields and get expected response.
 
 # Mutation Test
 
+Test coverage could be measured **code and mutation coverage**.  
+Code coverage measures percentage of execution paths that exercised during tests. 
+On the other hand mutation test dynamically change the code, cause the tests fail and measures tests coverage.
+
+In this project, [pitest](https://pitest.org/) was used for the mutation testing.
+
+
+Each change in the code called as mutant. 
+You can check all mutators from [here](https://pitest.org/quickstart/mutators/) for the pitest framework.
+
+The `customer-service` project is a gradle project, and pitest integrated to the project using [info.solidsoft.pitest](https://plugins.gradle.org/plugin/info.solidsoft.pitest) gradle plugin.
+
+You can check settings from build.gradle file. 
+
+```groovy
+
+pitest {
+    threads.set(4)
+    outputFormats.set(['XML', 'HTML'])
+    timestampedReports.set(false)
+    mutators.set(['CONDITIONALS_BOUNDARY', 'VOID_METHOD_CALLS', 'NEGATE_CONDITIONALS',
+                  'INVERT_NEGS', 'MATH', 'INCREMENTS',
+                  'TRUE_RETURNS', 'FALSE_RETURNS', 'PRIMITIVE_RETURNS', 'EMPTY_RETURNS', 'NULL_RETURNS']
+    )
+    timeoutConstInMillis.set(10000)
+    junit5PluginVersion.set('0.12')
+}
+```
+
+- threads: Number of threads to run pitest
+- outputFormats: To generate pitest reports in XML and HTML formats
+- timestampedReports: Generate reports and named report directory with timestamp. Setted false.
+- mutators: List of mutators. Default mutators will be used w/o setting this field.
+- timeoutConstInMillis: Test timeouts
+- junit5PluginVersion: to run JUnit5 tests with pitest. Check [pitest-junit5-plugin](https://github.com/pitest/pitest-junit5-plugin)
+
+To run the pitest on your local run the following command in the project root directory.
+
+ ```bash
+ ./gradlew pitest
+ ```
+
+Test reports will be under `./customer-service/build/reports/pitests` directory. You can open `index.html` in a browser to see the mutation coverage and details.
+
+
 # Integration Test
 
 `WireMock`, `OkHttpClient`  will be used in integration test.
