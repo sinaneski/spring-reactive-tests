@@ -1,43 +1,126 @@
 # spring-reactive-tests
 
-WebClient, Mutation and Integration tests in spring reactive web. 
+The aim of this project is to demonstrate Unit, Mutation and Integration tests in Spring reactive web. 
 
-We'll implement an `customer-service` that get customer contact information from other rest apis.
+Following utility classes were implemented:
 
-`customer-service` will have following endpoints:
-- POST `/customers/{customerId}`
-- POST `/customers/{customerId}/address`
-- GET `/customers/{customerId}/address`
-- GET `/customers/{customerId}/address/{addressId}`
-- DELETE `/customers/{customerId}/address/{addressId}`
+ - `MockWebServerKit` to easily mock and test `WebClient` in unit test.
+ - `HttpClientKit` to easily send requests to our controller in integration test.
+ - `WireMockKit` to easily stub our 3rd party dependencies in integration test.
 
+You could use these classes in your projects. 
+
+A demo project,`customer-service`, were implemented to show usage of these utility classes and testing a Spring reactive application.
+ 
 `customer-service` gets customer information `user-service`, and address information from `address-service`.
 
-`user-service` endpoints:
-- POST `/users`
-- GET `/users/{userId}`
+## Endpoints
 
-`address-service` endpoints:
-- POST `/address/{customerId}`
-- GET `/address/{customerId}`
-- GET `/address/{customerId}/{addressId}`
-- DELETE `/address/{customerId}/{addressId}`
+**`customer-service` endpoints**
 
-# Testing WebClient
+|  Operation | Endpoint                                       | Description                                     |
+| ---------- | ---------------------------------------------- | ----------------------------------------------- |  
+| POST       | `/customers`                                   | Add a new customer                              |
+| POST       | `/customers/{customerId}/address`              | Add a new address to a given customer           |
+| GET        | `/customers/{customerId}/address`              | Get address list of a given customer            |
+| GET        | `/customers/{customerId}/address/{addressId}`  | Get an address of a given customer              |
+| DELETE     | `/customers/{customerId}/address/{addressId}`  | Delete a given address                          |
 
-We implemented `MockWebServerKit` class to test spring `WebClient` in an easy way.
 
-This class uses `MockWebServer` from `okhttp3` project in order to mock the other apis server responses.
+**`user-service` endpoints**
 
-## How `MockWebServerKit` works
+|  Operation | Endpoint                                       | Description                                     |
+| ---------- | ---------------------------------------------- | ----------------------------------------------- |  
+| POST       | `/users`                                       | Add a new user                                  |
+| GET        | `/users/{userId}`                              | Get user information                            |
 
-- `.prepareMockResponseWith(HttpStatus.OK, addressResponse, headers)` : we set up a dummy response when web client called the 3rd party this response will be return to our client.
-- `.call(() -> addressWebClient.getAddress(addressId))` 
- we implemented `ClientDelegate` FunctionalInterface that has `call` method. We delegate this call to endpoint calls in our web client, and call our method.
-- the response could be `successful` or `error`. We check success body with `expectResponse` , error cases by `expectClientError` and `expectServerError`. For expectResponse we give the expected object to able to check response body. 
-- `.takeRequest()`  takes what request we send. After this call we only check our request. And, we can check `path`, `header` parameters. Or for `POST` and `PUT` operations we can check `body`.
 
-## How to use `MockWebServerKit`
+**`address-service` endpoints**
+
+|  Operation | Endpoint                                       | Description                                     |
+| ---------- | ---------------------------------------------- | ----------------------------------------------- |  
+| POST       | `/address/{customerId}`                        | Add a new address                               |
+| GET        | `/address/{customerId}`                        | Get address list of a given customer            |
+| GET        | `/customers/{customerId}/{addressId}`          | Get an address of a given customer              |
+| DELETE     | `/customers/{customerId}/{addressId}`          | Delete agiven address                           |
+
+# Unit Test
+
+Testing Spring `controller`, `services` and `clients (WebClient)` components were explained in this section. 
+
+## Testing Controller
+
+`WebTestClient` were used to send request to the controller. 
+
+`@ExtendWith(SpringExtension.class)` annotations should be added to use `WebTest` client. 
+
+Here is a sample to test a `GET` endpoint: 
+
+```java 
+    webTestClient.get()
+        .uri(CUSTOMER_PATH, customerId)
+        .accept(MediaType.APPLICATION_JSON)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.id").isEqualTo(customerId);
+```
+
+## Testing Service
+
+`StepVerifier` were used to test reactive service implementations. Dependencies were mocked using `Mockito`.
+
+For each test a `addressWebClient` created as a `mock` class.
+```java  
+  @BeforeEach
+  void setUp() {
+    addressWebClient = Mockito.mock(AddressWebClient.class);
+
+    addressService = new AddressService(addressWebClient);
+  }
+```
+
+`createAddress` method were mocked using `when` statement. The method were consumed using `StepVerifier`. 
+ 
+Response was verified `expectNext` and `verifyComplete`.
+
+```java 
+  @Test
+  void shouldAddAddress() {
+    Address addressRequest = ClientDataProvider.addressRequest();
+    Address addressResponse = ClientDataProvider.addressResponse();
+
+    when(addressWebClient.createAddress(addressRequest)).thenReturn(Mono.just(addressResponse));
+    
+    StepVerifier.create(addressService.addAddress(addressRequest))
+        .expectNext(addressResponse)
+        .verifyComplete();
+  }
+```
+
+Error cases and exception were verified using `expectErrorMatches` statement. 
+```java 
+    ...
+    StepVerifier.create(addressService.addAddress(addressRequest))
+        .expectErrorMatches(new ApplicationException(ErrorCode.ADDRESS_INVALID_REQUEST)::equals)
+        .verify();
+```
+
+## Testing WebClient
+
+`MockWebServerKit` class were implemented as a utility class to test spring `WebClient` in an easy way.
+
+This class uses `MockWebServer` from `okhttp3` project in order to mock the third party server responses.
+
+### How `MockWebServerKit` works
+
+- `.prepareMockResponseWith(HttpStatus.OK, addressResponse, headers)` : is used to set up a dummy response when an endpoint called from a 3rd party client. 
+- `.call(() -> addressWebClient.getAddress(addressId))`: `ClientDelegate` is FunctionalInterface that has a `call` method. You can delegate this call to endpoint method.
+- the response could be `successful` or `error`. You can check success body with `expectResponse` , error cases by `expectClientError` and `expectServerError`. For expectResponse, give the expected object to able to check response body. 
+- `.takeRequest()`:  takes the request. After this call you can only check the request. You can check `path`, `header` parameters. Or for `POST` and `PUT` operations you can check `body`.
+
+### How to use `MockWebServerKit`
 
 1. Create a mockWebTestClient using `mockWebTestClient = MockWebServerKit.create();` to start a mock server before each test.
 
@@ -54,12 +137,12 @@ This class uses `MockWebServer` from `okhttp3` project in order to mock the othe
       }
      ``` 
  
-Here we set `mockWebTestClient.getMockServerUrl()` to our `base-url`.
+Here, `mockWebTestClient.getMockServerUrl()` is `base-url`.
  
 2. Prepare a mock response for a given request and check actual webClient implementation calls endpoint using 
 correct path, header, body fields and get expected response.
 
-- Example: testing GET endpoint call
+- Example: testing a GET endpoint call
     ```java 
       mockWebTestClient
             .prepareMockResponseWith(HttpStatus.OK, addressResponse, headers)
@@ -72,7 +155,7 @@ correct path, header, body fields and get expected response.
     
     ```
 
-- Example: testing POST endpoint call
+- Example: testing a POST endpoint call
     ```java 
         mockWebTestClient
             .prepareMockResponseWith(HttpStatus.CREATED, addressResponse, headers)
@@ -86,7 +169,7 @@ correct path, header, body fields and get expected response.
             .expectBody(addressRequest, Address.class);
     ```
   
-- Example: testing DELETE endpoint call
+- Example: testing a DELETE endpoint call
 
     ```java 
       mockWebTestClient
@@ -98,7 +181,7 @@ correct path, header, body fields and get expected response.
             .expectPath(ADDRESS_PATH.replace("{addressId}", addressId))
     ```
   
-- Example: testing client error when endpoint return 4xx error
+- Example: testing client errors when endpoint return 4xx error
 
     ```java 
       mockWebTestClient.prepareMockResponseWith(HttpStatus.BAD_REQUEST)
@@ -106,7 +189,7 @@ correct path, header, body fields and get expected response.
            .expectClientError();
     ```
 
-- Example: testing server error when endpoint return 5xx error
+- Example: testing server errors when endpoint return 5xx error
 
     ```java 
       mockWebTestClient.prepareMockResponseWith(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -114,8 +197,7 @@ correct path, header, body fields and get expected response.
         .expectServerError();
     ```
 
-        
-        
+       
 3. Close mock server using `mockWebTestClient.dispose();` after each test.
 
 ```java 
@@ -128,8 +210,6 @@ correct path, header, body fields and get expected response.
 
 # Mutation Test
 
-We'll use `pitest` for mutation testing.
-
 # Integration Test
 
-We'll use `WireMock` and `OkHttpClient` in integration test.
+`WireMock`, `OkHttpClient`  will be used in integration test.

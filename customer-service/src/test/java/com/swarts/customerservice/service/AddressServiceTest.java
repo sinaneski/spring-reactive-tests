@@ -38,9 +38,7 @@ class AddressServiceTest {
 
     when(addressWebClient.createAddress(addressRequest)).thenReturn(Mono.just(addressResponse));
 
-    Mono<Address> addressMono = addressService.addAddress(addressRequest);
-
-    StepVerifier.create(addressMono)
+    StepVerifier.create(addressService.addAddress(addressRequest))
         .expectNext(addressResponse)
         .verifyComplete();
   }
