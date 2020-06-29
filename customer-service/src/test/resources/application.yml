@@ -1,0 +1,9 @@
+user-service:
+  url: http://localhost:${wiremock.server.port}
+  path-users: /users
+  path-user: /users/{userId}
+
+address-service:
+  url: http://localhost:${wiremock.server.port}
+  path-addresses: /address/{customerId}
+  path-address: /address/{customerId}/{addressId}

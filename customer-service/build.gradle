@@ -54,6 +54,7 @@ pitest {
     timeoutConstInMillis.set(10000)
     useClasspathFile.set(true)
     junit5PluginVersion.set('0.12')
+    excludedTestClasses.set(['com.swarts.customerservice.integration.*'])
 }
 
 test {

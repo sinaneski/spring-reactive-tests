@@ -257,4 +257,181 @@ Test reports will be under `./customer-service/build/reports/pitests` directory.
 
 # Integration Test
 
-`WireMock`, `OkHttpClient`  will be used in integration test.
+`WireMock`, `OkHttpClient` were used in integration tests.
+
+- WireMockKit utility class added to manage 3rd party dependencies 
+- Client{NAME}Service uses WireMockKit to stub 3rd party client
+- HttpClientKit utility class added to send request to the customer-service controller
+- Each endpoint implemented as a separated class
+
+## How to use WireMockKit
+
+WireMockKit uses `stubFor` methods of `WireMock` to stub 3rd party dependencies.
+WireMockKit has helper methods to stub the third party client. 
+ 
+Operation list:
+- setupGetStub(String requestUrl, int responseStatus, T responseBody)
+- setupPostStub(String requestUrl, int responseStatus, T responseBody)
+- setPutStub(String requestUrl, int responseStatus, T responseBody)
+- setupPatchStub(String requestUrl, int responseStatus, T responseBody)
+- setupPatchStub(String requestUrl, int responseStatus)  (if patch operation returns NO_CONTENT)
+- setupDeleteStub(String requestUrl, int responseStatus)
+
+A helper method implementation.
+
+```java 
+
+  public static <T> void setupGetStub(String requestUrl, int responseStatus, T responseBody) {
+
+    stubFor(get(urlEqualTo(requestUrl))
+        .withHeader(HttpHeaders.ACCEPT, containing(MediaType.APPLICATION_JSON_VALUE))
+        .willReturn(aResponse()
+            .withFixedDelay(0)
+            .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+            .withStatus(responseStatus)
+            .withBody(ObjectMapperUtils.toJsonString(responseBody))
+        )
+    );
+  }
+```
+
+WireMockKit uses `url` matching to match a request to client endpoint.
+
+- 
+- Stub a GET endpoint
+```java 
+    //...
+    List<Address> addressList;
+    //...
+    WireMockKit.setupGetStub(MessageFormat.format("/address/{0}", customerId),
+        HttpStatus.SC_OK,
+        addressList);
+```
+
+- Stub a POST endpoint
+
+```java 
+    //...
+    Address address;
+    //...
+    WireMockKit.setupPostStub(MessageFormat.format("/address/{0}", customerId),
+        HttpStatus.SC_CREATED,
+        address);
+```
+
+- Stub a DELETE endpoint
+
+```java 
+    WireMockKit.setupDeleteStub(MessageFormat.format(/address/{0}/{1}, customerId, addressId),
+        HttpStatus.SC_NO_CONTENT);
+```
+
+
+## How to use HttpClientKit
+
+HttpClientKit uses `OkHttpClient` and creates a static instance of it.
+
+```java 
+  private static final OkHttpClient client = getOkHttpClient();
+
+  private static OkHttpClient getOkHttpClient() {
+    OkHttpClient client = new OkHttpClient.Builder()
+        .callTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .writeTimeout(10, TimeUnit.SECONDS)
+        .build();
+    return client;
+  }
+
+```
+
+HttpClientKit support following operations
+- Response performPatch(String targetUrl, T requestBody)
+- Response performPut(String targetUrl, T requestBody)
+- Response performPost(String targetUrl, T requestBody)
+- Response performGet(String targetUrl)
+- Response performDelete(String targetUrl)
+
+And, following helper methods to get response body string as an actual dto object.
+
+- T getResponseBody(Response response, Class<T> type)
+- T getResponseBody(Response response, TypeReference<T> valueTypeRef)
+
+A helper method implementation:
+
+```java 
+  public static <T> Response performPatch(String targetUrl, T requestBody)
+      throws IOException {
+    Request request = new Request.Builder()
+        .patch(RequestBody.create(ObjectMapperUtils.toJsonString(requestBody),
+            okhttp3.MediaType.parse("application/json")))
+        .url(targetUrl)
+        .build();
+
+    return client.newCall(request).execute();
+  }
+```
+
+In order to use HttpClientKit.
+
+1. Call the service endpoint using HttpClientKit helper methods.
+- 
+```java 
+    //...
+    Customer customerRequest;
+    //...
+    Response response = HttpClientKit.performPost("http://localhost:8091/customers", customerRequest);
+```
+
+2. Convert response body to your DTO classes.
+
+```java 
+    Customer actualResponse = HttpClientKit.getResponseBody(response, Customer.class);
+```
+
+Then check status of response and compare response object with the expected result.
+
+## An integration test example
+
+Add customer address end point test. 
+
+```java 
+  @Test
+  public void shouldAddCustomer() throws IOException {
+
+    //given
+    final User userResponse = ClientDataProvider.userResponse();
+    final Address addressResponse = ClientDataProvider.addressResponse();
+   
+    ClientUserService.stubWith(userResponse)
+        .postUserReturnCREATED();
+   
+    ClientAddressService.stubWith(userResponse.getId())
+        .addAddress(addressResponse)
+        .createAddressReturnCREATED();
+
+    //when
+
+    final Customer customerRequest = DataProvider.customerRequest();
+    final String url = MessageFormat.format(CUSTOMER_URL, getBaseUrl());
+    Response response = HttpClientKit.performPost(url, customerRequest);
+
+    //then
+    Customer actualResponse = HttpClientKit.getResponseBody(response, Customer.class);
+    Customer expectedResponse = DataProvider.customerResponse();
+    assertThat(response.code(), is(HttpStatus.SC_CREATED));
+    assertThat(actualResponse, is(expectedResponse));
+  }
+
+```
+
+
+# Links
+
+- https://square.github.io/okhttp/
+- http://wiremock.org/docs/getting-started/
+- https://pitest.org/
+- https://gradle-pitest-plugin.solidsoft.info/
+- https://github.com/pitest/pitest-junit5-plugin
+- https://junit.org/junit5/docs/current/user-guide/
+- https://site.mockito.org/

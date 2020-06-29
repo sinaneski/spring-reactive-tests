@@ -47,7 +47,8 @@ public class CustomerService {
 
   public Mono<CustomerAddress> addAddress(CustomerAddress addressRequest) {
     return validateAddressRequest(addressRequest)
-        .map(this::toAddress)
+        .flatMap(request -> userService.getUser(request.getCustomerId()))
+        .map(user -> this.toAddress(addressRequest))
         .flatMap(addressService::addAddress)
         .map(this::toCustomerAddress);
   }
